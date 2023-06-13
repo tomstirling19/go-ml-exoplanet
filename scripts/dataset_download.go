@@ -1,4 +1,4 @@
-package scripts
+package main
 
 import (
 	"fmt"
@@ -8,6 +8,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/briandowns/spinner"
 )
 
 // get script for TESS dataset sector 64 (latest) lightcurves
@@ -60,10 +63,11 @@ func getDataset(scriptFile string) error {
     cmd := exec.Command("/bin/sh", "-c", absScriptFile)
     cmd.Dir = filepath.Join("data", "raw", "fits")
 
-    p := helpers.ShowProgressBar(100)
-    defer p.Stop()
-
+    s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+    s.Start()
     output, err := cmd.CombinedOutput()
+    s.Stop()
+
     if err != nil {
         return fmt.Errorf("script execution failed: %v\nOutput: %s", err, output)
     }

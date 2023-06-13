@@ -1,4 +1,3 @@
-### Go ###
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -9,8 +8,10 @@
 *.out
 go.work
 
-### macOS ###
 # General
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# project
+/data
