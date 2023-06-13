@@ -1,11 +1,13 @@
-package main
+package scripts
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"time"
@@ -48,22 +50,23 @@ func getDatasetScript(outputDir string) (string, error) {
 		return "", fmt.Errorf("unable to set script file as executable: %v", err)
 	}
 
-	fmt.Printf("successfully downloaded TESS .sh file to %s\n", outputDir)
+	fmt.Printf("successfully downloaded TESS .sh file to %s.\n", outputDir)
 
 	return scriptFile, nil
 }
 
 // execute TESS sector 64 script to obtain all sector 64 exoplanet data
-func getDataset(scriptFile string) error {
+func getDataset(ctx context.Context, scriptFile string) error {
     absScriptFile, err := filepath.Abs(scriptFile)
     if err != nil {
         return fmt.Errorf("unable to get absolute path of script file: %v", err)
     }
 
-    cmd := exec.Command("/bin/sh", "-c", absScriptFile)
+    cmd := exec.CommandContext(ctx, "/bin/sh", "-c", absScriptFile)
     cmd.Dir = filepath.Join("data", "raw", "fits")
 
     s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+    s.Prefix = "downloading... "
     s.Start()
     output, err := cmd.CombinedOutput()
     s.Stop()
@@ -89,8 +92,16 @@ func removeScriptFile(scriptPath string) error {
 	return nil
 }
 
-func main() {
+func datasetDownload() {
 	outputDir := filepath.Join("data", "raw", "fits")
+	ctx, cancel := context.WithCancel(context.Background())
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt)
+	go func() {
+		<-sig
+		cancel()
+	}()
 
 	scriptFile, err := getDatasetScript(outputDir)
 	if err != nil {
@@ -98,7 +109,7 @@ func main() {
 		return
 	}
 
-	err = getDataset(scriptFile)
+	err = getDataset(ctx, scriptFile)
 	if err != nil {
 		fmt.Println("error: ", err)
 		return
@@ -108,4 +119,6 @@ func main() {
 	if err != nil {
 		fmt.Println("error: ", err)
 	}
+
+	cancel()
 }
